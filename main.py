@@ -26,11 +26,12 @@ class User(db.Model):
 class Offer(db.Model):
     __tablename__ = 'offer'
     id = db.Column(db.Integer, primary_key=True)
-    order_id = db.Column(db.Integer)
-    executor_id = db.Column(db.Integer)
-    # order_id = db.Column(db.Integer, db.ForeignKey('order.id'))
-    # executor_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-    # orders = db.relationship("Order")
+    # order_id = db.Column(db.Integer)
+    # executor_id = db.Column(db.Integer)
+    order_id = db.Column(db.Integer, db.ForeignKey('order.id'))
+    executor_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    orders = db.relationship("Order")
+    users = db.relationship('User')
 
 
 class Order(db.Model):
@@ -38,14 +39,16 @@ class Order(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50))
     description = db.Column(db.String(255))
-    start_date = db.Column(db.Date)
-    end_date = db.Column(db.Date)
+    start_date = db.Column(db.String(50))
+    end_date = db.Column(db.String(50))
     address = db.Column(db.String(50))
     price = db.Column(db.Integer)
-    customer_id = db.Column(db.Integer)
-    executor_id = db.Column(db.Integer)
-    # customer_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-    # executor_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    # customer_id = db.Column(db.Integer)
+    # executor_id = db.Column(db.Integer)
+    customer_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    executor_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    users = db.relationship('User', foreign_keys=[customer_id])
+    user1 = db.relationship('User', foreign_keys=[executor_id])
 
 
 def main():
@@ -80,8 +83,7 @@ def insert_data():
             Offer(
                 id=offer['id'],
                 order_id=offer['order_id'],
-                executor_id=offer['executor_id'],
-                # orders = db.relationship("Order")
+                executor_id=offer['executor_id']
             )
         )
         with db.session.begin():
@@ -97,37 +99,16 @@ def insert_data():
                 start_date=datetime.strptime(order['start_date'], '%m/%d/%Y'),
                 end_date=datetime.strptime(order['end_date'], '%m/%d/%Y'),
                 address=order['address'],
-                price=order['price'],
-                # customer_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-                # executor_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+                price=order['price']
             )
         )
         with db.session.begin():
             db.session.add_all(new_orders)
 
 
-# @app.route('/', methods=['GET,POST'])
-# def orders_index():
-#     if request.method == 'GET':
-#         data = []
-#         for order in Order.query.all():
-#             customer = User.query.get(order.customer_id).first_name
-#             executor = User.query.get(order.executor_id).first_name
-#             data.append({
-#                 'id': order.id,
-#                 'name': order.name,
-#                 'description': order.description,
-#                 'start_date': order.start_date,
-#                 'end_date': order.end_date,
-#                 'address': order.address,
-#                 'price': order.price
-#             })
-#         return jsonify(data)
-
 # ШАГ 3
 # Создайте представление для пользователей,
 # которое обрабатывало бы `GET`-запросы получения всех пользователей `/users`
-
 @app.route('/users', methods=['GET'])
 def users_index():
     users_data = []
@@ -147,17 +128,20 @@ def users_index():
 # и одного пользователя по идентификатору `/users/1`.
 @app.route('/users/<int:id>', methods=['GET'])
 def get_user_by_id(id):
-    user = User.query.get(id)
-    user_dict = {
-        'id': user.id,
-        'first_name': user.first_name,
-        'last_name': user.last_name,
-        'age': user.age,
-        'email': user.email,
-        'role': user.role,
-        'phone': user.phone
-    }
-    return jsonify(user_dict)
+    try:
+        user = User.query.get(id)
+        user_dict = {
+            'id': user.id,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+            'age': user.age,
+            'email': user.email,
+            'role': user.role,
+            'phone': user.phone
+        }
+        return jsonify(user_dict)
+    except:
+        return 'Неверные данные'
 
 
 # ШАГ 4
@@ -237,41 +221,50 @@ def create_user():
         role=user_data.get('role'),
         phone=user_data.get('phone')
     )
+
     db.session.add(new_user)
     db.session.commit()
-    new_user_dict = {
-        'id': 31,
-        'first_name': 'Sweet',
-        'last_name': 'Potato',
-        'age': 25,
-        'email': 'sweet@potato.com',
-        'role': 'executor',
-        'phone': '128500'
-    }
-    return jsonify(new_user_dict)
+    new_user_dict = {}
+    new_user_dict['id'] = new_user.id
+    new_user_dict['first_name'] = new_user.first_name
+    new_user_dict['last_name'] = new_user.last_name
+    new_user_dict['age'] = new_user.age
+    new_user_dict['email'] = new_user.email
+    new_user_dict['role'] = new_user.role
+    new_user_dict['phone'] = new_user.phone
+
+    return 'Новый пользователь добавлен в базу!', 201
 
 
 # Реализуйте обновление пользователя `user` посредством метода PUT на URL `/users/<id>`  для users.
 @app.route('/users/<int:id>', methods=['PUT'])
-def update_user():
-    user_to_update = User.query.get(id)
-    user_to_update.first_name = request.json['new_first_name']
-    user_to_update.last_name = request.json['new_last_name']
-    user_to_update.age = request.json['new_age']
-    user_to_update.email = request.json['new_email']
-    user_to_update.phone = request.json['new_phone']
-    db.session.commit()
-    db.session.close()
+def update_user(id):
+    try:
+        user_for_update = User.query.get(id)
+        data_to_update = request.json
+        setattr(user_for_update, 'first_name', data_to_update['first_name'])
+        setattr(user_for_update, 'last_name', data_to_update['last_name'])
+        setattr(user_for_update, 'age', data_to_update['age'])
+        setattr(user_for_update, 'email', data_to_update['email'])
+        setattr(user_for_update, 'role', data_to_update['role'])
+        setattr(user_for_update, 'phone', data_to_update['phone'])
+
+        db.session.add(user_for_update)
+        db.session.commit()
+        db.session.close()
+
+        return 'Данные изменены', 200
+    except Exception: 'Неверные данные ¯\_(ツ)_/¯', 404
 
 
 # В Body будет приходить JSON со всеми полями для обновление заказа.
 # Реализуйте удаление пользователя `user` посредством метода DELETE на URL `/users/<id>` для users.
-@app.route('/users/<int:id>/delete')
+@app.route('/users/<int:id>', methods=['DELETE'])
 def delete_user(id):
     user_to_delete = User.query.get(id)
     db.session.delete(user_to_delete)
     db.session.commit()
-    return jsonify("")
+    return 'Удалено, молодец))))', 204
 
 
 # ШАГ 7
@@ -282,6 +275,7 @@ def create_order():
     new_order = Order(
         id=order_data.get('id'),
         name=order_data.get('name'),
+        description=order_data.get('description'),
         start_date=order_data.get('start_date'),
         end_date=order_data.get('end_date'),
         address=order_data.get('address'),
@@ -289,31 +283,39 @@ def create_order():
     )
     db.session.add(new_order)
     db.session.commit()
-    new_order_dict = {
-        'id': 50,
-        'name': 'покрасить собаке шерсть',
-        'description': 'заказать краску, дать собаке снотворное, покрасить в синий',
-        'start_date': 12 / 30 / 2016,
-        'end_date': 12 / 31 / 2016,
-        'address': '12637 Poodle Road\nBarking, NM 29343',
-        'price': 1000
-    }
-    return jsonify(new_order_dict)
+    new_order_dict = {}
+    new_order_dict['id'] = new_order.id
+    new_order_dict['name'] = new_order.name
+    new_order_dict['description'] = new_order.description
+    new_order_dict['start_date'] = new_order.start_date
+    new_order_dict['end_date'] = new_order.end_date
+    new_order_dict['address'] = new_order.address
+    new_order_dict['price'] = new_order.price
+
+    return 'Новый заказ добавлен в базу!', 201
 
 
 # Реализуйте обновление заказа order посредством метода PUT на URL /orders/<id>  для orders.
 # В Body будет приходить JSON со всеми полями для обновление заказа.
 @app.route('/orders/<int:id>', methods=['PUT'])
-def update_order():
-    order_to_update = Order.query.get(id)
-    order_to_update.name = request.json['new_name']
-    order_to_update.description = request.json['new_description']
-    order_to_update.start_date = request.json['new_start_date']
-    order_to_update.end_date = request.json['new_end_date']
-    order_to_update.address = request.json['new_address']
-    order_to_update.price = request.json['new_price']
-    db.session.commit()
-    db.session.close()
+def update_order(id):
+    try:
+        order_for_update = Order.query.get(id)
+        data_to_update = request.json
+        setattr(order_for_update, 'name', data_to_update['name'])
+        setattr(order_for_update, 'description', data_to_update['description'])
+        setattr(order_for_update, 'start_date', data_to_update['start_date'])
+        setattr(order_for_update, 'end_date', data_to_update['end_date'])
+        setattr(order_for_update, 'address', data_to_update['address'])
+        setattr(order_for_update, 'address', data_to_update['address'])
+        setattr(order_for_update, 'price', data_to_update['price'])
+        db.session.add(order_for_update)
+        db.session.commit()
+        db.session.close()
+
+        return 'Данные изменены', 200
+    except Exception: 'Неверные данные ¯\_(ツ)_/¯', 404
+
 
 # Реализуйте удаление заказа order посредством метода DELETE на URL /orders/<id> для orders.
 @app.route('/orders/<int:id>/delete')
@@ -321,7 +323,8 @@ def delete_order(id):
     order_to_delete = Order.query.get(id)
     db.session.delete(order_to_delete)
     db.session.commit()
-    return jsonify("")
+    return 'Ну, молодец, удалил важный заказ))))', 204
+
 
 # ШАГ 8
 # Реализуйте создание предложения offer посредством метода POST на URL /offers для offers.
@@ -335,22 +338,28 @@ def create_offer():
     )
     db.session.add(new_offer)
     db.session.commit()
-    new_offer_dict = {
-        'id': 70,
-        'order_id': 43,
-        'executor_id': 16
-    }
-    return jsonify(new_offer_dict)
+    new_offer_dict = {}
+    new_offer_dict['id'] = new_offer.id
+    new_offer_dict['offer_id'] = new_offer.ioffer_idd
+    new_offer_dict['executor_id'] = new_offer.executor_id
+
+    return 'Новый оффер добавлен в базу!', 201
+
 
 # Реализуйте обновление предложения offer посредством метода PUT на URL /offers/<id> для offers.
 # В Body будет приходить JSON со всеми полями для обновление предложения.
 @app.route('/offers/<int:id>', methods=['PUT'])
-def update_offer():
-    offer_to_update = Offer.query.get(id)
-    offer_to_update.order_id = request.json['new_order_id']
-    offer_to_update.executor_id = request.json['new_executor_id']
-    db.session.commit()
-    db.session.close()
+def replace_offer(id):
+    try:
+        offer_to_replace = Offer.query.get(id)
+        data_to_update = request.json
+        setattr(offer_to_replace, 'order_id', data_to_update['order_id'])
+        setattr(offer_to_replace, 'executor_id', data_to_update['executor_id'])
+        db.session.add(offer_to_replace)
+        db.session.commit()
+        db.session.close()
+        return 'Оффер добавлен', 200
+    except Exception: 'Неверные данные ¯\_(ツ)_/¯', 404
 
 # Реализуйте удаление предложения offer посредством метода DELETE на URL /offers/<id> для offers.
 @app.route('/offers/<int:id>/delete')
@@ -358,7 +367,7 @@ def delete_offer(id):
     offer_to_delete = Offer.query.get(id)
     db.session.delete(offer_to_delete)
     db.session.commit()
-    return jsonify("")
+    return 'Оффер удалён', 204
 
 
 if __name__ == '__main__':
