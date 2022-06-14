@@ -340,7 +340,7 @@ def create_offer():
     db.session.commit()
     new_offer_dict = {}
     new_offer_dict['id'] = new_offer.id
-    new_offer_dict['offer_id'] = new_offer.ioffer_idd
+    new_offer_dict['offer_id'] = new_offer.offer_id
     new_offer_dict['executor_id'] = new_offer.executor_id
 
     return 'Новый оффер добавлен в базу!', 201
