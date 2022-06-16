@@ -362,7 +362,7 @@ def replace_offer(id):
     except Exception: 'Неверные данные ¯\_(ツ)_/¯', 404
 
 # Реализуйте удаление предложения offer посредством метода DELETE на URL /offers/<id> для offers.
-@app.route('/offers/<int:id>/delete')
+@app.route('/offers/<int:id>/', methods=['DELETE'])
 def delete_offer(id):
     offer_to_delete = Offer.query.get(id)
     db.session.delete(offer_to_delete)
